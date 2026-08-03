@@ -1,0 +1,186 @@
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- Variáveis de controle
+local autoBatAtivo = false
+local loopThread = nil
+
+-- ==========================================
+-- 1. CRIAÇÃO DO MENU (Estilo Rosa e Branco)
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BloydMenu"
+ScreenGui.Parent = player.PlayerGui
+
+local MainMenu = Instance.new("Frame")
+MainMenu.Size = UDim2.new(0, 180, 0, 350)
+MainMenu.Position = UDim2.new(0.75, 0, 0.2, 0)
+MainMenu.BackgroundColor3 = Color3.fromRGB(255, 240, 240)
+MainMenu.BackgroundTransparency = 0.1
+MainMenu.Parent = ScreenGui
+local MainCorner = Instance.new("UICorner", MainMenu)
+MainCorner.CornerRadius = UDim.new(0, 15)
+
+local Titulo = Instance.new("TextLabel", MainMenu)
+Titulo.Size = UDim2.new(1, 0, 0, 40)
+Titulo.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+Titulo.BackgroundTransparency = 0.3
+Titulo.Text = "Jerry.vs”
+Titulo.TextColor3 = Color3.fromRGB(255, 50, 100)
+Titulo.Font = Enum.Font.GothamBlack
+Titulo.TextSize = 16
+local TituloCorner = Instance.new("UICorner", Titulo)
+TituloCorner.CornerRadius = UDim.new(0, 15)
+
+local Grid = Instance.new("UIGridLayout")
+Grid.CellSize = UDim2.new(0, 80, 0, 40)
+Grid.SortOrder = Enum.SortOrder.LayoutOrder
+Grid.Padding = UDim.new(0, 5)
+Grid.Parent = MainMenu
+
+-- ==========================================
+-- 2. FUNÇÃO PARA CRIAR OS BOTÕES
+-- ==========================================
+local function criarBotao(texto, corFundo)
+    local btn = Instance.new("TextButton")
+    btn.BackgroundColor3 = corFundo or Color3.fromRGB(255, 255, 255)
+    btn.Text = texto
+    btn.TextColor3 = Color3.fromRGB(255, 50, 100)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 10
+    btn.Parent = MainMenu
+    local btnCorner = Instance.new("UICorner", btn)
+    btnCorner.CornerRadius = UDim.new(0, 12)
+    return btn
+end
+
+-- Criação dos botões idênticos à imagem
+local btnAutoBat = criarBotao("AUTO BAT", Color3.fromRGB(255, 200, 200))
+local btnTPBat = criarBotao("TP BAT", Color3.fromRGB(255, 200, 200))
+local btnDropBR = criarBotao("DROP BR", Color3.fromRGB(255, 200, 200))
+local btnAutoLeft = criarBotao("AUTO LEFT", Color3.fromRGB(255, 200, 200))
+local btnInstaReset = criarBotao("INSTA RESET", Color3.fromRGB(255, 200, 200))
+local btnAutoRight = criarBotao("AUTO RIGHT", Color3.fromRGB(255, 200, 200))
+local btnTPDown = criarBotao("TP DOWN", Color3.fromRGB(255, 200, 200))
+local btnCarrySPD = criarBotao("CARRY SPD", Color3.fromRGB(255, 200, 200))
+local btnLaggerCarry = criarBotao("LAGGER CARRY", Color3.fromRGB(255, 200, 200))
+local btnLaggerMode = criarBotao("LAGGER MODE", Color3.fromRGB(255, 200, 200))
+
+-- ==========================================
+-- 3. LÓGICA DAS FUNÇÕES DO JOGO (GreenDuels)
+-- ==========================================
+local function pegarBat()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local root = char.HumanoidRootPart
+
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if string.find(obj.Name, "Bat") or string.find(obj.Name, "Batter") or string.find(obj.Name, "Taco") then
+            local alvo = obj
+            if obj.Parent and obj.Parent:IsA("BasePart") then alvo = obj.Parent end
+            
+            local dist = (root.Position - alvo.Position).Magnitude
+            if dist <= 30 then
+                pcall(function()
+                    -- Tenta todos os métodos de pegar
+                    local detector = alvo:FindFirstChildOfClass("ClickDetector")
+                    if detector then detector.MouseClick:Fire(player) end
+                    
+                    local prompt = alvo:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt then prompt:InputHold() end
+
+                    for _, remote in pairs(game.ReplicatedStorage:GetChildren()) do
+                        if remote:IsA("RemoteEvent") then
+                            remote:FireServer(alvo)
+                            remote:FireServer(alvo.Parent)
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end
+
+local function teletransportarParaBat()
+    local char = player.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if string.find(obj.Name, "Bat") or string.find(obj.Name, "Batter") or string.find(obj.Name, "Taco") then
+            local alvo = obj
+            if obj.Parent and obj.Parent:IsA("BasePart") then alvo = obj.Parent end
+            root.CFrame = alvo.CFrame -- Teleporta o jogador até o taco
+            print("TP BAT ativado!")
+            break
+        end
+    end
+end
+
+local function autoMove(direcao)
+    -- Simula o movimento pressionando as teclas A ou D (Funciona na maioria dos jogos)
+    if direcao == "Left" then
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, "A", false, game)
+        task.wait(0.1)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, "A", false, game)
+    elseif direcao == "Right" then
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, "D", false, game)
+        task.wait(0.1)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, "D", false, game)
+    end
+end
+
+-- ==========================================
+-- 4. CONECTANDO OS BOTÕES AS FUNÇÕES
+-- ==========================================
+btnAutoBat.MouseButton1Click:Connect(function()
+    autoBatAtivo = not autoBatAtivo
+    if autoBatAtivo then
+        btnAutoBat.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        btnAutoBat.TextColor3 = Color3.new(1,1,1)
+        loopThread = task.spawn(function()
+            while autoBatAtivo do
+                task.wait(0.1)
+                pegarBat()
+            end
+        end)
+    else
+        btnAutoBat.BackgroundColor3 = Color3.fromRGB(255, 200, 200)
+        btnAutoBat.TextColor3 = Color3.fromRGB(255, 50, 100)
+        if loopThread then task.cancel(loopThread) end
+        loopThread = nil
+    end
+end)
+
+btnTPBat.MouseButton1Click:Connect(teletransportarParaBat)
+btnAutoLeft.MouseButton1Click:Connect(function() autoMove("Left") end)
+btnAutoRight.MouseButton1Click:Connect(function() autoMove("Right") end)
+
+btnDropBR.MouseButton1Click:Connect(function()
+    print("Botão DROP BR clicado (simulação)")
+end)
+btnInstaReset.MouseButton1Click:Connect(function()
+    local char = player.Character
+    if char then char:BreakJoints() end -- Mata o personagem e respawna
+end)
+btnTPDown.MouseButton1Click:Connect(function()
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame - Vector3.new(0, 10, 0)
+    end
+end)
+btnCarrySPD.MouseButton1Click:Connect(function()
+    print("Carry Speed ativado (simulação)")
+end)
+btnLaggerCarry.MouseButton1Click:Connect(function()
+    print("Lagger Carry ativado (simulação)")
+end)
+btnLaggerMode.MouseButton1Click:Connect(function()
+    print("Lagger Mode ativado (simulação)")
+end)
+
+print("Menu Jerry.gg carregado com sucesso!")
