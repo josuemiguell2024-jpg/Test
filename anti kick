@@ -1,0 +1,21 @@
+local Players = game:GetService("Players")
+local function isCharacterValid(player, character)
+    if not player or not character then return false end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not root then
+        return false
+    end
+    if humanoid.Health <= 0 then
+        return false
+    end
+    return true
+end
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        if not isCharacterValid(player, character) then
+            player:Kick("Validation failed")
+            return
+        end
+    end)
+end)
